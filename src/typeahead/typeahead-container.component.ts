@@ -1,18 +1,23 @@
+// tslint:disable:max-file-line-count max-line-length
 import {
   Component,
   ElementRef,
   HostListener,
+  OnInit,
   QueryList,
+  Renderer2,
   TemplateRef,
   ViewChild,
-  ViewChildren,
-  Renderer2
+  ViewChildren
 } from '@angular/core';
 
 import { isBs3, Utils } from 'ngx-bootstrap/utils';
+import { PositioningService } from 'ngx-bootstrap/positioning';
+
 import { latinize } from './typeahead-utils';
 import { TypeaheadMatch } from './typeahead-match.class';
 import { TypeaheadDirective } from './typeahead.directive';
+import { typeaheadAnimation } from './typeahead-animations';
 
 @Component({
   selector: 'typeahead-container',
@@ -33,12 +38,12 @@ import { TypeaheadDirective } from './typeahead.directive';
       z-index: 1000;
     }
   `
-  ]
+  ],
+  animations: [typeaheadAnimation]
 })
-export class TypeaheadContainerComponent {
+export class TypeaheadContainerComponent implements OnInit {
   parent: TypeaheadDirective;
   query: string[] | string;
-  element: ElementRef;
   isFocused = false;
   top: string;
   left: string;
@@ -47,6 +52,7 @@ export class TypeaheadContainerComponent {
   dropup: boolean;
   guiHeight: string;
   needScrollbar: boolean;
+  animationState = 'void';
 
   get isBs4(): boolean {
     return !isBs3();
@@ -62,11 +68,10 @@ export class TypeaheadContainerComponent {
   private liElements: QueryList<ElementRef>;
 
   constructor(
-    element: ElementRef,
-    private renderer: Renderer2
-  ) {
-    this.element = element;
-  }
+    private positionService: PositioningService,
+    private renderer: Renderer2,
+    public element: ElementRef
+  ) { }
 
   get active(): TypeaheadMatch {
     return this._active;
@@ -78,7 +83,10 @@ export class TypeaheadContainerComponent {
 
   set matches(value: TypeaheadMatch[]) {
     this._matches = value;
+    this.animationState = this.isAnimated ? 'animated' : 'unanimated';
+
     this.needScrollbar = this.typeaheadScrollable && this.typeaheadOptionsInScrollableView < this.matches.length;
+
     if (this.typeaheadScrollable) {
       setTimeout(() => {
         this.setScrollableMode();
@@ -111,6 +119,14 @@ export class TypeaheadContainerComponent {
     return this.parent ? this.parent.optionsListTemplate : undefined;
   }
 
+  get isAnimated(): boolean {
+    return this.parent ? this.parent.isAnimated : false;
+  }
+
+  get adaptivePosition(): boolean {
+    return this.parent ? this.parent.adaptivePosition : false;
+  }
+
   get typeaheadScrollable(): boolean {
     return this.parent ? this.parent.typeaheadScrollable : false;
   }
@@ -134,6 +150,22 @@ export class TypeaheadContainerComponent {
 
     if (!this.parent.typeaheadSelectFirstItem && isActiveItemChanged) {
       this.selectMatch(this._active);
+    }
+  }
+
+  ngOnInit(): void {
+    this.positionService.setOptions({
+      modifiers: { flip: { enabled: this.adaptivePosition } },
+      allowedPositions: ['top', 'bottom']
+    });
+
+    if (this.isAnimated) {
+      this.positionService.setOptions({
+        modifiers: {
+          flip: { enabled: false },
+          preventOverflow: { enabled: false }
+        }
+      });
     }
   }
 
@@ -224,6 +256,15 @@ export class TypeaheadContainerComponent {
     setTimeout(() => this.parent.typeaheadOnSelect.emit(value), 0);
 
     return false;
+  }
+
+  calcPosition(): void {
+    this.positionService.setOptions({
+      modifiers: { flip: { enabled: this.adaptivePosition } },
+      allowedPositions: ['top', 'bottom']
+    });
+
+    this.positionService.calcPosition();
   }
 
   setScrollableMode(): void {
