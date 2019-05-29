@@ -28,7 +28,7 @@ import { typeaheadAnimation } from './typeahead-animations';
     '[class.dropdown-menu]': 'isBs4',
     '[style.overflow-y]' : `isBs4 && needScrollbar ? 'scroll': 'visible'`,
     '[style.height]': `isBs4 && needScrollbar ? guiHeight: 'auto'`,
-    '[style.visibility]': `typeaheadScrollable ? 'hidden' : 'visible'`,
+    '[style.visibility]': `visibility`,
     '[class.dropup]': 'dropup',
     style: 'position: absolute;display: block;'
   },
@@ -52,7 +52,9 @@ export class TypeaheadContainerComponent implements OnInit {
   dropup: boolean;
   guiHeight: string;
   needScrollbar: boolean;
-  animationState = 'void';
+  animationState: string;
+  visibility = 'hidden';
+  height = 0;
 
   get isBs4(): boolean {
     return !isBs3();
@@ -82,8 +84,23 @@ export class TypeaheadContainerComponent implements OnInit {
   }
 
   set matches(value: TypeaheadMatch[]) {
+    this.positionService.setOptions({
+      modifiers: { flip: { enabled: this.adaptivePosition } },
+      allowedPositions: ['top', 'bottom']
+    });
+
+    setTimeout(() => {
+      this.height = this.element.nativeElement.offsetHeight;
+      this.visibility = this.typeaheadScrollable ? 'hidden' : 'visible';
+      this.animationState = 'void';
+    });
+
+    setTimeout(() => {
+      console.log(this.height);
+      this.animationState = this.isAnimated ? 'animated' : 'unanimated';
+    });
+
     this._matches = value;
-    this.animationState = this.isAnimated ? 'animated' : 'unanimated';
 
     this.needScrollbar = this.typeaheadScrollable && this.typeaheadOptionsInScrollableView < this.matches.length;
 
@@ -154,19 +171,7 @@ export class TypeaheadContainerComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.positionService.setOptions({
-      modifiers: { flip: { enabled: this.adaptivePosition } },
-      allowedPositions: ['top', 'bottom']
-    });
 
-    if (this.isAnimated) {
-      this.positionService.setOptions({
-        modifiers: {
-          flip: { enabled: false },
-          preventOverflow: { enabled: false }
-        }
-      });
-    }
   }
 
   prevActiveMatch(): void {
@@ -259,12 +264,12 @@ export class TypeaheadContainerComponent implements OnInit {
   }
 
   calcPosition(): void {
-    this.positionService.setOptions({
-      modifiers: { flip: { enabled: this.adaptivePosition } },
-      allowedPositions: ['top', 'bottom']
-    });
-
-    this.positionService.calcPosition();
+    // this.positionService.setOptions({
+    //   modifiers: { flip: { enabled: this.adaptivePosition } },
+    //   allowedPositions: ['top', 'bottom']
+    // });
+    //
+    // this.positionService.calcPosition();
   }
 
   setScrollableMode(): void {
